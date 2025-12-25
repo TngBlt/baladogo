@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐕 BalaDogo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web@2.0.3"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2D5A3D;
+            --primary-light: #3D7A52;
+            --primary-dark: #1F4029;
+            --accent: #E59500;
+            --bg-primary: #0d1210;
+            --bg-secondary: #151d18;
+            --bg-card: #1e2a22;
+            --bg-hover: #263330;
+            --text-primary: #f5f5f5;
+            --text-secondary: #7a9a85;
+            --text-muted: #666;
+            --border: #2f4a38;
+            --shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        body { font-family: 'Nunito', sans-serif; background: var(--bg-primary); min-height: 100vh; color: var(--text-primary); }
+        .app { max-width: 1600px; margin: 0 auto; padding: 16px; }
+
+        header { text-align: center; padding: 20px 0 28px; }
+        .logo { display: inline-flex; align-items: center; gap: 14px; background: var(--primary); padding: 12px 28px 12px 14px; border-radius: 16px; box-shadow: 0 4px 20px rgba(45, 90, 61, 0.4); }
+        h1 { font-family: 'Fraunces', serif; font-size: 1.8rem; color: white; font-weight: 700; }
+        .subtitle { color: var(--text-secondary); font-size: 0.95rem; margin-top: 8px; }
+
+        .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; gap: 20px; }
+        @media (max-width: 1200px) { .main-layout { grid-template-columns: 300px 1fr; } .right-panel { display: none; } }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+
+        .sidebar { display: flex; flex-direction: column; gap: 16px; }
+        .card { background: var(--bg-card); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .card-title { font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .card-title::before { content: ''; width: 4px; height: 16px; background: linear-gradient(180deg, var(--accent) 0%, #F5B800 100%); border-radius: 2px; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group:last-child { margin-bottom: 0; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+
+        input[type="text"], select { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 12px; font-size: 0.95rem; font-family: inherit; transition: all 0.2s; background: var(--bg-secondary); color: var(--text-primary); }
+        input[type="text"]:focus, select:focus { outline: none; border-color: var(--primary); background: var(--bg-card); }
+        select option { background: var(--bg-card); }
+
+        .input-row { display: flex; gap: 8px; }
+        .input-row input { flex: 1; }
+
+        .btn { padding: 12px 20px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: var(--accent); color: var(--bg-primary); width: 100%; box-shadow: 0 4px 15px rgba(229, 149, 0, 0.3); font-weight: 800; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(229, 149, 0, 0.4); background: #F5B800; }
+        .btn-primary:disabled { background: var(--bg-hover); color: var(--text-muted); box-shadow: none; cursor: not-allowed; }
+        .btn-icon { padding: 12px; background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 12px; flex-shrink: 0; color: var(--text-primary); }
+        .btn-icon:hover { border-color: var(--primary); background: var(--bg-hover); }
+
+        .range-container { margin-bottom: 18px; }
+        .range-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        .range-value { font-weight: 800; color: var(--accent); background: var(--bg-secondary); padding: 2px 10px; border-radius: 20px; }
+        input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: var(--bg-secondary); outline: none; -webkit-appearance: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); cursor: pointer; box-shadow: 0 2px 8px rgba(229, 149, 0, 0.4); }
+        /* Dual Range Slider Styles */
+        .dual-range-slider {
+            position: relative;
+            height: 40px;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .dual-range-slider input[type="range"] {
+            position: absolute;
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            pointer-events: none;
+            -webkit-appearance: none;
+            z-index: 2;
+            top: 17px; /* Aligne avec range-track */
+        }
+        
+        .dual-range-slider input[type="range"]::-webkit-slider-thumb {
+            pointer-events: all;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(229, 149, 0, 0.4);
+            border: 2px solid var(--bg-card);
+            position: relative;
+            z-index: 3;
+        }
+        
+        .dual-range-slider input[type="range"]::-moz-range-thumb {
+            pointer-events: all;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(229, 149, 0, 0.4);
+            border: 2px solid var(--bg-card);
+            position: relative;
+            z-index: 3;
+        }
+        
+        .dual-range-slider .range-track {
+            position: absolute;
+            top: 17px;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            z-index: 1;
+        }
+        
+        .dual-range-slider .range-fill {
+            position: absolute;
+            top: 17px;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 3px;
+            z-index: 1;
+            transition: all 0.1s ease;
+        }
+
+        /* Single Range Slider (pour rayon) */
+        .single-range-slider {
+            position: relative;
+            height: 40px;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .single-range-slider input[type="range"] {
+            position: absolute;
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            -webkit-appearance: none;
+            z-index: 2;
+            top: 17px;
+        }
+        
+        .single-range-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(229, 149, 0, 0.4);
+            border: 2px solid var(--bg-card);
+            position: relative;
+            z-index: 3;
+        }
+        
+        .single-range-slider input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(229, 149, 0, 0.4);
+            border: 2px solid var(--bg-card);
+            position: relative;
+            z-index: 3;
+        }
+        
+        .single-range-slider .range-track {
+            position: absolute;
+            top: 17px;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            z-index: 1;
+        }
+        
+        .single-range-slider .range-fill-single {
+            position: absolute;
+            top: 17px;
+            left: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 3px;
+            z-index: 1;
+            transition: width 0.1s ease;
+        }
+
+
+
+
+
+        .location-info { margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 12px; font-size: 0.85rem; border-left: 4px solid var(--primary); }
+        .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.85rem; padding: 8px 12px; border-radius: 10px; transition: background 0.2s; }
+        .checkbox-item:hover { background: var(--bg-hover); }
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+
+        .map-area { display: flex; flex-direction: column; gap: 16px; }
+        .map-container { position: relative; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); border: 2px solid var(--border); }
+        #map { height: 520px; background: var(--bg-secondary); }
+
+        .map-controls { position: absolute; top: 12px; right: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+        .map-control-btn { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 6px; color: var(--text-primary); transition: all 0.2s; }
+        .map-control-btn:hover { background: var(--bg-hover); border-color: var(--primary); }
+        .map-control-btn.active { background: var(--primary); color: var(--bg-primary); border-color: var(--primary); }
+
+        .layer-selector { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .layer-option { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; color: var(--text-primary); transition: all 0.2s; }
+        .layer-option:hover { background: var(--bg-hover); }
+        .layer-option.active { background: var(--accent); color: var(--bg-primary); font-weight: 700; }
+
+        .elevation-container { background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .elevation-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .elevation-title { font-weight: 700; font-size: 0.9rem; color: var(--primary); }
+        .elevation-stats { display: flex; gap: 14px; font-size: 0.8rem; }
+        .elevation-stat { display: flex; align-items: center; gap: 4px; background: var(--bg-secondary); padding: 4px 10px; border-radius: 20px; color: var(--text-primary); }
+        .elevation-stat .up { color: #EF4444; }
+        .elevation-stat .down { color: #22C55E; }
+        #elevationChart { width: 100%; height: 100px; }
+
+        .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .results-title { font-family: 'Fraunces', serif; font-size: 1.4rem; color: var(--text-primary); }
+        .results-count { background: var(--primary); color: var(--bg-primary); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+        .walk-card { background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.2); transition: all 0.25s; cursor: pointer; border: 2px solid transparent; }
+        .walk-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); border-color: var(--border); }
+        .walk-card.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(229, 149, 0, 0.3); }
+        
+        
+
+        .walk-card-header { padding: 14px 14px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+        .walk-num { width: 32px; height: 32px; background: var(--primary); color: var(--bg-primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; }
+        
+        
+
+        .walk-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-loop { background: #166534; color: #BBF7D0; }
+        .badge-return { background: #92400E; color: #FDE68A; }
+        .badge-official { background: var(--accent); color: var(--bg-primary); }
+        
+        
+
+        .walk-card-body { padding: 12px 14px; }
+        .walk-name { font-family: 'Fraunces', serif; font-size: 1rem; color: var(--text-primary); margin-bottom: 10px; line-height: 1.3; font-weight: 600; cursor: pointer; transition: color 0.2s; }
+        .walk-name:hover { color: var(--primary); text-decoration: underline; }
+
+        .walk-stats { display: flex; gap: 12px; margin-bottom: 10px; }
+        .walk-stat { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+        .walk-stat strong { color: var(--accent); font-weight: 800; }
+
+        .walk-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .meta-item { font-size: 0.7rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+        .walk-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
+
+        .walk-card-actions { display: flex; gap: 6px; padding: 0 14px 14px; }
+        .btn-action { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-view { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-view:hover { background: var(--bg-hover); border-color: var(--primary); }
+        .btn-gpx { background: var(--accent); color: var(--bg-primary); }
+        .btn-gpx:hover { background: #F5B800; }
+        .btn-fav { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-fav.active { background: #422006; color: var(--accent); border-color: #854d0e; }
+        .btn-hide { background: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border); flex: 0 !important; padding: 10px 12px !important; }
+        .btn-hide:hover { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+
+        .right-panel { display: flex; flex-direction: column; gap: 16px; }
+        .weather-card { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(45, 90, 61, 0.3); }
+        .weather-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .weather-temp { font-size: 2.8rem; font-weight: 800; }
+        .weather-icon { font-size: 2.5rem; }
+        .weather-desc { font-size: 0.95rem; opacity: 0.9; margin-bottom: 12px; font-weight: 600; }
+        .weather-details { display: flex; gap: 16px; font-size: 0.85rem; opacity: 0.9; }
+
+        .favorites-list { max-height: 280px; overflow-y: auto; }
+        .favorite-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 12px; cursor: pointer; transition: background 0.2s; margin-bottom: 4px; }
+        .favorite-item:hover { background: var(--bg-hover); }
+        .favorite-info { flex: 1; }
+        .favorite-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; color: var(--text-primary); }
+        .favorite-meta { font-size: 0.75rem; color: var(--text-secondary); }
+        .favorite-remove { padding: 6px 10px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; border-radius: 8px; }
+        .favorite-remove:hover { background: #7F1D1D; color: #FCA5A5; }
+
+        .favorites-group { margin-bottom: 12px; }
+        .favorites-group-title { font-size: 0.75rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; padding: 4px 8px; background: var(--bg-secondary); border-radius: 6px; }
+
+        .history-item { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-primary); }
+        .history-item:hover { background: var(--bg-hover); }
+
+        .loading-container { text-align: center; padding: 60px 20px; background: var(--bg-card); border-radius: 20px; border: 1px solid var(--border); }
+        .spinner { width: 50px; height: 50px; border: 4px solid var(--bg-secondary); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 1.1rem; color: var(--primary); font-weight: 700; }
+        .loading-sub { font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px; }
+
+        .message-box { padding: 24px; border-radius: 16px; text-align: center; }
+        .message-box.error { background: #450A0A; color: #FCA5A5; border: 2px solid #7F1D1D; }
+        .message-box.empty { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); }
+
+        .progress-info { margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 12px; font-size: 0.8rem; }
+        .progress-item { display: flex; justify-content: space-between; padding: 4px 0; color: var(--text-secondary); }
+        .progress-item span:last-child { font-weight: 700; color: var(--accent); }
+
+        .section-divider { margin: 24px 0 14px; padding-top: 14px; border-top: 2px dashed var(--border); }
+        .section-divider-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        
+        
+
+
+
+        /* Styles pour les icônes Phosphor */
+        .card-title i { font-size: 1rem; }
+        .btn i { font-size: 1.1rem; }
+        .btn-icon i { font-size: 1.2rem; }
+        .map-control-btn i { font-size: 1rem; }
+        .layer-option i { font-size: 1rem; }
+        .walk-stat i { font-size: 1rem; }
+        .meta-item i { font-size: 0.75rem; margin-right: 2px; }
+        .btn-action i { font-size: 0.9rem; }
+        .weather-icon i { font-size: 2.5rem; }
+        .weather-details i { font-size: 1rem; margin-right: 4px; }
+        .favorite-meta i { font-size: 0.75rem; margin-right: 2px; }
+        .favorite-remove i { font-size: 1.1rem; }
+        .favorites-group-title i { font-size: 0.75rem; margin-right: 4px; }
+        .history-item i { font-size: 1rem; }
+        .empty-state-icon i { font-size: 2.5rem; }
+        .selected-stat-icon i { font-size: 1.1rem; }
+        .selected-walk-details .detail-row i { font-size: 1rem; }
+        .btn-selected-action i { font-size: 1rem; }
+        .theme-toggle i { font-size: 1rem; }
+        .scroll-top-btn { display: flex; align-items: center; justify-content: center; }
+        .scroll-top-btn i { font-size: 1.4rem; }
+        .walk-tooltip .tooltip-stats i { font-size: 0.85rem; }
+        .btn-load-more i { font-size: 1rem; }
+        .section-divider-title i { font-size: 1rem; }
+
+        
+        
+        
+        
+        .empty-state { text-align: center; padding: 30px; color: var(--text-secondary); }
+        .empty-state-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+        .selected-walk-card { background: var(--bg-card); border-radius: 16px; padding: 20px; border: 2px solid var(--accent); box-shadow: 0 4px 20px rgba(229, 149, 0, 0.2); }
+        .selected-walk-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
+        .selected-walk-title { font-family: 'Fraunces', serif; font-size: 1.3rem; color: var(--text-primary); font-weight: 700; flex: 1; }
+        .selected-walk-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+        .selected-walk-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+        .selected-stat { background: var(--bg-secondary); border-radius: 12px; padding: 12px 8px; text-align: center; }
+        .selected-stat-icon { font-size: 1.1rem; display: block; margin-bottom: 4px; }
+        .selected-stat-value { font-size: 1rem; font-weight: 800; color: var(--accent); display: block; }
+        .selected-stat-label { font-size: 0.7rem; color: var(--text-secondary); }
+        .selected-walk-details { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; padding: 14px; background: var(--bg-secondary); border-radius: 12px; line-height: 1.6; }
+        .selected-walk-details:empty { display: none; }
+        .selected-walk-details .detail-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .selected-walk-details .detail-row:last-child { margin-bottom: 0; }
+        .selected-walk-details .detail-label { color: var(--text-muted); min-width: 100px; }
+        .selected-walk-details .detail-value { color: var(--text-primary); font-weight: 600; }
+        .selected-walk-card .elevation-container { background: var(--bg-secondary); border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+        #elevationChart { width: 100%; height: 80px; }
+        .selected-walk-actions { display: flex; gap: 10px; }
+        .btn-selected-action { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-gpx-big { background: var(--accent); color: var(--bg-primary); }
+        .btn-gpx-big:hover { background: #F5B800; transform: translateY(-2px); }
+        .btn-fav-big { background: var(--bg-secondary); color: var(--text-primary); border: 2px solid var(--border); }
+        .btn-fav-big:hover { border-color: var(--primary-light); }
+        .btn-fav-big.active { background: #422006; color: var(--accent); border-color: #854d0e; }
+
+        .leaflet-control-zoom a { background: var(--bg-card) !important; color: var(--text-primary) !important; border-color: var(--border) !important; }
+        .leaflet-control-zoom a:hover { background: var(--bg-hover) !important; }
+        .leaflet-control-attribution { background: rgba(0,0,0,0.7) !important; color: var(--text-secondary) !important; }
+        .leaflet-popup-content-wrapper { background: var(--bg-card); color: var(--text-primary); border-radius: 12px; }
+        .leaflet-popup-tip { background: var(--bg-card); }
+        .leaflet-div-icon { background: transparent !important; border: none !important; }
+
+        .scroll-top-btn { position: fixed; bottom: 24px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 1.4rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 9999; opacity: 0; pointer-events: none; transition: all 0.3s; }
+        .scroll-top-btn.visible { opacity: 1; pointer-events: auto; }
+        .scroll-top-btn:hover { transform: translateY(-3px); background: var(--primary-light); }
+
+        .theme-toggle { position: fixed; top: 20px; right: 20px; padding: 10px 16px; border-radius: 30px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; z-index: 9999; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .theme-toggle:hover { border-color: var(--accent); }
+
+        .walk-tooltip { background: var(--bg-card) !important; color: var(--text-primary) !important; border: 1px solid var(--border) !important; border-radius: 10px !important; padding: 10px 14px !important; font-family: 'Nunito', sans-serif !important; box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important; }
+        .walk-tooltip .tooltip-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+        .walk-tooltip .tooltip-stats { font-size: 0.8rem; color: var(--text-secondary); display: flex; gap: 10px; }
+        .walk-tooltip .tooltip-stats span { display: flex; align-items: center; gap: 4px; }
+        .walk-tooltip .tooltip-stats strong { color: var(--accent); }
+        .leaflet-tooltip { padding: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+        .leaflet-tooltip::before { display: none !important; }
+
+        .load-more-container { text-align: center; padding: 20px; }
+        .btn-load-more { padding: 14px 32px; background: var(--bg-card); border: 2px solid var(--border); border-radius: 12px; color: var(--text-primary); font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-load-more:hover { border-color: var(--accent); background: var(--bg-hover); }
+
+        .hidden-walks-info { background: var(--bg-secondary); border-radius: 10px; padding: 10px 14px; margin-top: 12px; font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+        .hidden-walks-info button { background: transparent; border: none; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; }
+
+        /* Light mode */
+        body.light-mode { --bg-primary: #f5f7f6; --bg-secondary: #e8ede9; --bg-card: #ffffff; --bg-hover: #dce5de; --text-primary: #1a2e22; --text-secondary: #5a7a65; --text-muted: #8aa895; --border: #c5d5ca; }
+        body.light-mode .weather-card { color: white; }
+        body.light-mode .leaflet-control-attribution { background: rgba(255,255,255,0.8) !important; color: var(--text-secondary) !important; }
+        
+        /* Fix pour le fond noir de la carte topo aux zooms max */
+        .leaflet-tile-container img { background-color: transparent !important; }
+    
+        /* Bouton accordéon supprimé - filtres toujours visibles */
+
+        /* Section Filtres Avancés (toujours visible) */
+        .advanced-filters {
+            /* Pas d'animation, toujours visible */
+        }
+
+        /* Radio Groups (boutons pills) */
+        .radio-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .radio-item {
+            flex: 1;
+            min-width: 75px;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radio-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        .radio-item input[type="radio"] {
+            display: none;
+        }
+
+        .radio-item:has(input[type="radio"]:checked) {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Checkboxes pour filtres spéciaux */
+        .advanced-filters .checkbox-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+        }
+
+        .advanced-filters .checkbox-item input[type="checkbox"] {
+            accent-color: var(--accent);
+        }
+
+    
+        /* Checkbox Pills (multi-sélection) */
+        .checkbox-group-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pill-item {
+            flex: 1;
+            min-width: 75px;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pill-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        .pill-item input[type="checkbox"] {
+            display: none;
+        }
+
+        .pill-item.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            font-weight: 700;
+        }
+
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle"><i class="ph ph-moon"></i>Mode sombre</button>
+    <button class="scroll-top-btn" id="scrollTopBtn"><i class="ph ph-arrow-up"></i></button>
+    <div class="app">
+        <header>
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 200 200" style="width:44px;height:44px;">
+                    <circle cx="100" cy="100" r="95" fill="#1F4029"/>
+                    <path d="M42 118 Q38 100 41 88 Q44 75 52 68 Q48 52 53 48 Q60 44 63 52 Q66 62 62 75 Q72 62 85 58 Q100 55 115 58 Q128 62 138 75 Q134 62 137 52 Q140 44 147 48 Q152 52 148 68 Q156 75 159 88 Q162 100 158 118 Q152 138 130 146 Q112 152 100 151 Q88 152 70 146 Q48 138 42 118" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M100 65 Q98 80 101 95 Q99 110 100 125" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    <path d="M68 96 Q75 88 82 96" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M118 96 Q125 88 132 96" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    <ellipse cx="100" cy="126" rx="5" ry="4" fill="white"/>
+                </svg>
+                <h1>BalaDogo</h1>
+            </div>
+        </header>
+        </header>
+
+        <div class="main-layout">
+            <aside class="sidebar">
+                <div class="card">
+                    <div class="card-title"> Point de départ</div>
+                    <div class="form-group">
+                        <div class="input-row">
+                            <input type="text" id="cityInput" value="" placeholder="LapinVille...">
+                            <button class="btn-icon" id="gpsBtn" title="Ma position"><i class="ph ph-crosshair"></i></button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="locateBtn">Localiser</button>
+                    <div class="location-info" id="locationInfo" style="display:none;"></div>
+                    <div id="historyContainer" style="margin-top: 12px; display: none;">
+                        <label style="font-size: 0.75rem; color: var(--text-secondary);">Récents</label>
+                        <div id="historyList"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"> Paramètres</div>
+                    <div class="range-container">
+                        <div class="range-header">
+                            <span>Rayon de recherche</span>
+                            <span class="range-value" id="radiusValue">15 km</span>
+                        </div>
+                        <div class="single-range-slider">
+                            <input type="range" id="radiusRange" min="5" max="30" value="15">
+                            <div class="range-track"></div>
+                            <div class="range-fill-single" id="radiusFill"></div>
+                        </div>
+                    </div>
+                    <div class="range-container">
+                        <div class="range-header">
+                            <span>Durée de balade</span>
+                            <span class="range-value" id="durationValue">1h à 2h</span>
+                        </div>
+                        <div class="dual-range-slider">
+                            <input type="range" id="durationMin" min="30" max="240" value="60" step="15" class="range-min">
+                            <input type="range" id="durationMax" min="30" max="240" value="120" step="15" class="range-max">
+                            <div class="range-track"></div>
+                            <div class="range-fill" id="durationFill"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Type de parcours</label>
+                        <div class="radio-group">
+                            <label class="radio-item">
+                                <input type="radio" name="routeType" value="all" checked>
+                                <span>Tous types</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="routeType" value="loop">
+                                <span>Boucles</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="routeType" value="return">
+                                <span>Aller-retour</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtres Avancés (toujours visibles) -->
+                    <div class="advanced-filters" id="advancedFilters" style="display: block; margin-top: 16px; padding-top: 16px; border-top: 2px dashed var(--border);">
+                        
+                        <div class="form-group">
+                            <label>🏙️ Environnement <span style="font-size:0.7rem;color:var(--text-muted);">(multi-sélection)</span></label>
+                            <div class="checkbox-group-pills">
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="environment" value="urban" checked>
+                                    <span>Urbain</span>
+                                </label>
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="environment" value="nature" checked>
+                                    <span>Nature</span>
+                                </label>
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="environment" value="mixed" checked>
+                                    <span>Mixte</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>⭐ Difficulté <span style="font-size:0.7rem;color:var(--text-muted);">(multi-sélection)</span></label>
+                            <div class="checkbox-group-pills">
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="difficulty" value="easy" checked>
+                                    <span>Facile</span>
+                                </label>
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="difficulty" value="moderate" checked>
+                                    <span>Modéré</span>
+                                </label>
+                                <label class="pill-item active">
+                                    <input type="checkbox" name="difficulty" value="hard" checked>
+                                    <span>Difficile</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>🐾 Spécial chien</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" id="filterWaterPoints">
+                                    <span>💧 Points d'eau sur le trajet</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" id="filterShaded">
+                                    <span>🌳 Zones ombragées</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>🚶 Affluence estimée</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="crowding" value="quiet">
+                                    <span>Calme</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="crowding" value="moderate" checked>
+                                    <span>Modéré</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="crowding" value="busy">
+                                    <span>Fréquenté</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>☀️ Ensoleillement</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="sunlight" value="sunny">
+                                    <span>Ensoleillé</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="sunlight" value="shaded">
+                                    <span>Ombragé</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="sunlight" value="mixed" checked>
+                                    <span>Variable</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    
+                </div>
+
+                <button class="btn btn-primary" id="searchBtn" disabled style="display: none;">
+                     <i class="ph ph-magnifying-glass"></i> Rechercher des circuits
+                </button>
+
+                <div class="progress-info" id="progressInfo" style="display:none;">
+                    <div class="progress-item"><span>Circuits trouvés</span><span id="statRoutes">-</span></div>
+                    <div class="progress-item"><span>Affichés</span><span id="statDisplayed">-</span></div>
+                </div>
+            </aside>
+
+            <main class="map-area">
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-controls">
+                        <div class="layer-selector">
+                            <div class="layer-option active" data-layer="osm"> <i class="ph ph-map-trifold"></i> Standard</div>
+                            <div class="layer-option" data-layer="topo"> <i class="ph ph-mountains"></i> Topo</div>
+                            <div class="layer-option" data-layer="satellite"> <i class="ph ph-planet"></i> Satellite</div>
+                        </div>
+                        <button class="map-control-btn active" id="showAllBtn"> <i class="ph ph-eye"></i> Voir toutes</button>
+                    </div>
+                </div>
+                <div class="selected-walk-card" id="selectedWalkCard" style="display: none;">
+                    <div class="selected-walk-header">
+                        <div class="selected-walk-title" id="selectedWalkTitle">-</div>
+                        <div class="selected-walk-badges" id="selectedWalkBadges"></div>
+                    </div>
+                    <div class="selected-walk-stats">
+                        <div class="selected-stat">
+                            <i class="ph-bold ph-clock selected-stat-icon"></i>
+                            <span class="selected-stat-value" id="selectedDuration">-</span>
+                            <span class="selected-stat-label">Durée</span>
+                        </div>
+                        <div class="selected-stat">
+                            <i class="ph-bold ph-path selected-stat-icon"></i>
+                            <span class="selected-stat-value" id="selectedDistance">-</span>
+                            <span class="selected-stat-label">Distance</span>
+                        </div>
+                        <div class="selected-stat">
+                            <i class="ph-bold ph-arrow-up selected-stat-icon"></i>
+                            <span class="selected-stat-value" id="selectedElevUp">-</span>
+                            <span class="selected-stat-label">D+</span>
+                        </div>
+                        <div class="selected-stat">
+                            <i class="ph-bold ph-arrow-down selected-stat-icon"></i>
+                            <span class="selected-stat-value" id="selectedElevDown">-</span>
+                            <span class="selected-stat-label">D-</span>
+                        </div>
+                    </div>
+                    <div class="selected-walk-details" id="selectedWalkDetails"></div>
+                    <div class="elevation-container" id="elevationContainer">
+                        <canvas id="elevationChart"></canvas>
+                    </div>
+                    <div class="selected-walk-actions">
+                        <button class="btn-selected-action btn-gpx-big" id="selectedGpxBtn"><i class="ph ph-download-simple"></i> Télécharger GPX</button>
+                        <button class="btn-selected-action btn-fav-big" id="selectedFavBtn"><i class="ph ph-star"></i> Sauvegarder</button>
+                    </div>
+                </div>
+                <div id="results"></div>
+            </main>
+
+            <aside class="right-panel">
+                <div class="weather-card">
+                    <div class="weather-header">
+                        <div>
+                            <div style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 4px;" id="weatherTime">--:--</div>
+                            <div class="weather-temp" id="weatherTemp">--°</div>
+                            <div class="weather-desc" id="weatherDesc">Chargement...</div>
+                        </div>
+                        <div class="weather-icon" id="weatherIcon"><i class="ph ph-sun"></i></div>
+                    </div>
+                    <div class="weather-details">
+                        <span><i class="ph ph-wind"></i> <span id="weatherWind">--</span> km/h</span>
+                        <span><i class="ph ph-drop"></i> <span id="weatherHumidity">--</span>%</span>
+                    </div>
+                    <div class="weather-forecast" id="weatherForecast" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.8rem; display: none;">
+                        <div style="opacity: 0.8; margin-bottom: 6px;"> Prévision balade :</div>
+                        <div id="forecastContent" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="ph ph-paw-print"></i> Mes balades</div>
+                    <div id="favoritesGrouped"></div>
+                    <div class="favorites-list" id="favoritesList">
+                        <div class="empty-state"><div class="empty-state-icon"><i class="ph ph-paw-print"></i></div><p>Aucune balade sauvegardée</p></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const WALKING_SPEED = 4;
+        const INTERSECTION_THRESHOLD = 0.08;
+        
+        
+        
+        const STORAGE_KEY = 'baladog_data';
+        const PAGE_SIZE = 30;
+
+        const ROUTE_COLORS = { normal: '#E59500', selected: '#E59500', shortcut: '#8B5CF6', extension: '#06B6D4', variant: '#EC4899' };
+
+        
+        // Cache des références DOM pour optimiser les performances
+        const DOM = {
+            searchBtn: null,
+            cityInput: null,
+            locateBtn: null,
+            gpsBtn: null,
+            radiusRange: null,
+            radiusValue: null,
+            durationMin: null,
+            durationMax: null,
+            durationValue: null,
+            results: null,
+            map: null,
+            locationInfo: null,
+            historyList: null,
+            favoritesList: null,
+            weatherTemp: null,
+            weatherIcon: null,
+            weatherDesc: null,
+            weatherTime: null,
+            weatherWind: null,
+            weatherHumidity: null,
+            progressInfo: null,
+            statRoutes: null,
+            statDisplayed: null,
+            showAllBtn: null,
+            themeToggle: null,
+            scrollTopBtn: null
+        };
+
+        // Fonction pour initialiser le cache DOM
+        function initDOMCache() {
+            DOM.searchBtn = document.getElementById('searchBtn');
+            DOM.cityInput = document.getElementById('cityInput');
+            DOM.locateBtn = document.getElementById('locateBtn');
+            DOM.gpsBtn = document.getElementById('gpsBtn');
+            DOM.radiusRange = document.getElementById('radiusRange');
+            DOM.radiusValue = document.getElementById('radiusValue');
+            DOM.durationMin = document.getElementById('durationMin');
+            DOM.durationMax = document.getElementById('durationMax');
+            DOM.durationValue = document.getElementById('durationValue');
+            DOM.results = document.getElementById('results');
+            DOM.locationInfo = document.getElementById('locationInfo');
+            DOM.historyList = document.getElementById('historyList');
+            DOM.favoritesList = document.getElementById('favoritesList');
+            DOM.weatherTemp = document.getElementById('weatherTemp');
+            DOM.weatherIcon = document.getElementById('weatherIcon');
+            DOM.weatherDesc = document.getElementById('weatherDesc');
+            DOM.weatherTime = document.getElementById('weatherTime');
+            DOM.weatherWind = document.getElementById('weatherWind');
+            DOM.weatherHumidity = document.getElementById('weatherHumidity');
+            DOM.progressInfo = document.getElementById('progressInfo');
+            DOM.statRoutes = document.getElementById('statRoutes');
+            DOM.statDisplayed = document.getElementById('statDisplayed');
+            DOM.showAllBtn = document.getElementById('showAllBtn');
+            DOM.themeToggle = document.getElementById('themeToggle');
+            DOM.scrollTopBtn = document.getElementById('scrollTopBtn');
+        }
+
+        let map, userLocation, walks = [], allWalks = [];
+        let lastSearchLocation = null; // Pour éviter les recherches en double
+        let markersLayer, routesLayer, allRoutesLayer;
+        let currentTileLayer, favorites = [], searchHistory = [], hiddenWalks = [];
+        let showingAllRoutes = true;
+        let currentPage = 0;
+        let weatherData = null;
+
+        const tileLayers = {
+            osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr: 'Â© OSM' },
+            topo: { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attr: 'Â© Open<i class="ph ph-mountains"></i> TopoMap' },
+            satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: 'Â© Esri' }
+        };
+
+        const OVERPASS_SERVERS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+
+        
+        // Fonction utilitaire: debounce pour optimiser les événements répétitifs
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        
+        // Fonction utilitaire: fetch avec timeout
+        async function fetchWithTimeout(url, options = {}, timeout = 30000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                if (error.name === 'AbortError') {
+                    throw new Error('La requête a pris trop de temps');
+                }
+                throw error;
+            }
+        }
+
+        // Fonction utilitaire: sanitize HTML pour éviter XSS
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        
+        // Système de notifications toast
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                padding: 16px 24px;
+                background: ${type === 'error' ? '#DC2626' : type === 'success' ? '#16A34A' : '#2563EB'};
+                color: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        function init() {
+            // Ajouter les animations CSS pour les toasts
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(400px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            initDOMCache();
+            loadStoredData();
+            initTheme();
+            map = L.map('map').setView([45.68, 3.64], 11);
+            setTileLayer('osm');
+            markersLayer = L.layerGroup().addTo(map);
+            routesLayer = L.layerGroup().addTo(map);
+            allRoutesLayer = L.layerGroup().addTo(map);
+            setupEventListeners();
+            
+            // Initialiser les pills après que le DOM soit chargé
+            document.querySelectorAll('.pill-item').forEach(pill => {
+                const checkbox = pill.querySelector('input[type="checkbox"]');
+                
+                pill.addEventListener('click', function(e) {
+                    // Empêcher le double-toggle si on clique directement sur la checkbox
+                    if (e.target === checkbox) return;
+                    
+                    // Toggle la checkbox
+                    checkbox.checked = !checkbox.checked;
+                    
+                    // Mettre à jour le visuel immédiatement
+                    if (checkbox.checked) {
+                        pill.classList.add('active');
+                    } else {
+                        pill.classList.remove('active');
+                    }
+                    
+                    // Log pour debug
+                    console.log('🎯 Pill cliquée:', checkbox.value, '→', checkbox.checked ? 'COCHÉE' : 'DÉCOCHÉE');
+                    
+                    // Déclencher l'auto-recherche
+                    if (userLocation) {
+                        autoSearch();
+                    }
+                });
+            });
+            console.log('✅ Pills initialisées:', document.querySelectorAll('.pill-item').length, 'trouvées');
+            renderHistory();
+            renderFavorites();
+            const last = searchHistory[0];
+            if (last) { DOM.cityInput.value = last.name; locateCity(last.name); }
+        }
+
+        function loadStoredData() {
+            try { 
+                const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); 
+                favorites = d.favorites || []; 
+                searchHistory = d.history || []; 
+                hiddenWalks = d.hiddenWalks || [];
+            } catch (e) { favorites = []; searchHistory = []; hiddenWalks = []; }
+        }
+
+        function saveStoredData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ favorites, history: searchHistory.slice(0, 10), hiddenWalks })); }
+
+        function initTheme() {
+            const saved = localStorage.getItem('baladog_theme');
+            if (saved === 'light') document.body.classList.add('light-mode');
+            updateThemeButton();
+        }
+
+        function updateThemeButton() {
+            const isLight = document.body.classList.contains('light-mode');
+            DOM.themeToggle.innerHTML = isLight ? '<i class="ph ph-moon"></i> Mode sombre' : '<i class="ph ph-sun"></i> Mode clair';
+        }
+
+        function setupEventListeners() {
+            DOM.locateBtn.onclick = () => { const c = DOM.cityInput.value.trim(); if (c) locateCity(c); };
+            DOM.cityInput.onkeypress = (e) => { if (e.key === 'Enter') { const c = DOM.cityInput.value.trim(); if (c) locateCity(c); } };
+            DOM.gpsBtn.onclick = useGPS;
+            // Recherche automatique - pas de bouton onclick
+            DOM.radiusRange.oninput = (e) => {
+                const value = e.target.value;
+                DOM.radiusValue.textContent = value + ' km';
+                // Animer la barre de remplissage
+                const fill = document.getElementById('radiusFill');
+                if (fill) {
+                    const percent = ((value - 5) / (30 - 5)) * 100;
+                    fill.style.width = percent + '%';
+                }
+            };
+            // Event listeners pour le range slider double poignée
+            const updateDurationDisplay = () => {
+                let min = parseInt(DOM.durationMin.value);
+                let max = parseInt(DOM.durationMax.value);
+                
+                // S'assurer que min <= max
+                if (min > max) {
+                    const temp = min;
+                    min = max;
+                    max = temp;
+                    DOM.durationMin.value = min;
+                    DOM.durationMax.value = max;
+                }
+                
+                // Mettre à jour l'affichage du texte
+                DOM.durationValue.textContent = `${formatDuration(min)} à ${formatDuration(max)}`;
+                
+                // Mettre à jour la barre de remplissage
+                const fill = document.getElementById('durationFill');
+                if (fill) {
+                    const minPercent = ((min - 30) / (240 - 30)) * 100;
+                    const maxPercent = ((max - 30) / (240 - 30)) * 100;
+                    fill.style.left = minPercent + '%';
+                    fill.style.width = (maxPercent - minPercent) + '%';
+                }
+            };
+            
+            DOM.durationMin.oninput = updateDurationDisplay;
+            DOM.durationMax.oninput = updateDurationDisplay;
+            updateDurationDisplay(); // Init display
+            
+            // Déclencher recherche automatique quand filtres changent
+            let searchTimeout;
+            const autoSearch = () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (userLocation) {
+                        console.log('🔄 Filtres changés, relance recherche...');
+                        // Forcer la recherche même si même localisation
+                        lastSearchLocation = null;
+                        searchWalksProgressive();
+                    }
+                }, 1000); // Attendre 1s après dernier changement
+            };
+            
+            // Écouter les changements de filtres
+            DOM.radiusRange.addEventListener('change', autoSearch);
+            DOM.durationMin.addEventListener('change', autoSearch);
+            DOM.durationMax.addEventListener('change', autoSearch);
+            document.querySelectorAll('input[name="routeType"]').forEach(input => {
+                input.addEventListener('change', autoSearch);
+            });
+
+            // Filtres avancés
+            document.querySelectorAll('input[name="environment"]').forEach(input => {
+                input.addEventListener('change', autoSearch);
+            });
+            document.querySelectorAll('input[name="difficulty"]').forEach(input => {
+                input.addEventListener('change', autoSearch);
+            });
+            document.querySelectorAll('input[name="crowding"]').forEach(input => {
+                input.addEventListener('change', autoSearch);
+            });
+            document.querySelectorAll('input[name="sunlight"]').forEach(input => {
+                input.addEventListener('change', autoSearch);
+            });
+
+            
+            
+            // Initialiser la barre du slider rayon
+            const radiusFill = document.getElementById('radiusFill');
+            if (radiusFill) {
+                const value = parseInt(DOM.radiusRange.value);
+                const percent = ((value - 5) / (30 - 5)) * 100;
+                radiusFill.style.width = percent + '%';
+            }
+            document.querySelectorAll('.layer-option').forEach(opt => {
+                opt.onclick = () => { document.querySelectorAll('.layer-option').forEach(o => o.classList.remove('active')); opt.classList.add('active'); setTileLayer(opt.dataset.layer); };
+            });
+            DOM.showAllBtn.onclick = toggleAllRoutes;
+            
+            // Theme toggle
+            DOM.themeToggle.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                localStorage.setItem('baladog_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+                updateThemeButton();
+            };
+            
+            // Scroll to top button
+            const scrollBtn = DOM.scrollTopBtn;
+            window.addEventListener('scroll', () => {
+                scrollBtn.classList.toggle('visible', window.scrollY > 300);
+            });
+            scrollBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function setTileLayer(name) { 
+            if (currentTileLayer) map.removeLayer(currentTileLayer); 
+            const layer = tileLayers[name];
+            const options = { attribution: layer.attr };
+            if (layer.maxZoom) options.maxZoom = layer.maxZoom;
+            currentTileLayer = L.tileLayer(layer.url, options).addTo(map); 
+        }
+
+        function toggleAllRoutes() {
+            const btn = DOM.showAllBtn;
+            showingAllRoutes = !showingAllRoutes;
+            if (showingAllRoutes) { btn.classList.add('active'); allRoutesLayer.addTo(map); } else { btn.classList.remove('active'); map.removeLayer(allRoutesLayer); }
+        }
+
+        function formatDuration(m) { if (m < 60) return `${m} min`; const h = Math.floor(m/60), mm = m%60; return mm > 0 ? `${h}h${mm.toString().padStart(2,'0')}` : `${h}h`; }
+
+        async function locateCity(city) {
+            console.log('🔍 Recherche de:', city);
+            const btn = DOM.locateBtn; 
+            btn.disabled = true; 
+            btn.textContent = '⏳ ...';
+            
+            try {
+                console.log('📡 Appel API Nominatim...');
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}&limit=1`);
+                
+                if (!res.ok) {
+                    throw new Error(`Erreur HTTP: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                console.log('📦 Réponse API:', data);
+                
+                if (!data.length) { 
+                    alert('Lieu non trouvé'); 
+                    console.log('❌ Aucun résultat');
+                    return; 
+                }
+                
+                userLocation = { 
+                    lat: parseFloat(data[0].lat), 
+                    lng: parseFloat(data[0].lon), 
+                    name: data[0].address?.village || data[0].address?.town || data[0].address?.city || data[0].display_name.split(',')[0] 
+                };
+                
+                console.log('✅ Localisation trouvée:', userLocation);
+                
+                addToHistory(userLocation); 
+                updateLocationUI(); 
+                fetchWeather();
+                
+            } catch (err) { 
+                console.error('❌ Erreur de géolocalisation:', err);
+                alert('Erreur de localisation: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Localiser';
+            }
+        }
+
+        async function useGPS() {
+            if (!navigator.geolocation) return showToast('GPS non supporté', 'error');
+            const btn = DOM.gpsBtn; btn.innerHTML = '<i class="ph-bold ph-crosshair"></i>';
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => { 
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    
+                    // Reverse geocoding pour obtenir le nom du lieu
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                        const data = await res.json();
+                        const name = data.address?.village || data.address?.town || data.address?.city || data.address?.hamlet || 'Ma position';
+                        userLocation = { lat, lng, name };
+                    } catch (err) {
+                        userLocation = { lat, lng, name: 'Ma position' };
+                    }
+                    
+                    updateLocationUI(); 
+                    fetchWeather(); 
+                    btn.innerHTML = '<i class="ph-bold ph-crosshair"></i>'; 
+                },
+                () => { showToast('Position GPS non disponible', 'error'); btn.innerHTML = '<i class="ph-bold ph-crosshair"></i>'; }, 
+                { enableHighAccuracy: true }
+            );
+        }
+
+        function addToHistory(loc) { searchHistory = searchHistory.filter(h => h.name !== loc.name); searchHistory.unshift({ name: loc.name, lat: loc.lat, lng: loc.lng }); searchHistory = searchHistory.slice(0, 10); saveStoredData(); renderHistory(); }
+
+        function renderHistory() {
+            const c = document.getElementById('historyContainer'), l = DOM.historyList;
+            if (!searchHistory.length) { c.style.display = 'none'; return; }
+            c.style.display = 'block';
+            l.innerHTML = searchHistory.slice(0, 4).map(h => `<div class="history-item" onclick="quickLocate('${h.name}', ${h.lat}, ${h.lng})"> ${h.name}</div>`).join('');
+        }
+
+        function quickLocate(name, lat, lng) { userLocation = { lat, lng, name }; DOM.cityInput.value = name; updateLocationUI(); fetchWeather(); }
+
+        function updateLocationUI() {
+            const info = DOM.locationInfo;
+            info.style.display = 'block';
+            info.innerHTML = `<strong>${userLocation.name}</strong>`;
+            map.setView([userLocation.lat, userLocation.lng], 12);
+            markersLayer.clearLayers();
+            L.marker([userLocation.lat, userLocation.lng], { icon: L.divIcon({ html: '<div style="background:#2D5A3D;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(markersLayer);
+            DOM.searchBtn.disabled = false;
+            
+            // 🚀 LANCER RECHERCHE SEULEMENT SI LOCALISATION A CHANGÉ
+            const locationKey = `${userLocation.lat.toFixed(4)},${userLocation.lng.toFixed(4)}`;
+            
+            if (lastSearchLocation !== locationKey) {
+                console.log('🎯 Nouvelle localisation détectée:', userLocation.name);
+                console.log('🔍 Lancement recherche progressive...');
+                lastSearchLocation = locationKey;
+                
+                setTimeout(() => {
+                    searchWalksProgressive();
+                }, 300);
+            } else {
+                console.log('ℹ️  Même localisation, recherche ignorée');
+            }
+        }
+
+        async function fetchWeather() {
+            if (!userLocation) return;
+            try {
+                const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=${userLocation.lat}&longitude=${userLocation.lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&forecast_hours=6&timezone=auto`, {
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                }, 10000);
+                const data = await res.json(), c = data.current;
+                weatherData = data;
+                
+                // Afficher l'heure actuelle
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                DOM.weatherTime.textContent = `${hours}:${minutes}`;
+                
+                DOM.weatherTemp.textContent = Math.round(c.temperature_2m) + '°';
+                DOM.weatherWind.textContent = Math.round(c.wind_speed_10m);
+                DOM.weatherHumidity.textContent = c.relative_humidity_2m;
+                
+                // Mapping des codes météo vers les icônes Phosphor
+                const weatherIcons = { 
+                    0: 'sun', 1: 'cloud-sun', 2: 'cloud', 3: 'cloud', 
+                    45: 'cloud-fog', 48: 'cloud-fog', 
+                    51: 'cloud-rain', 53: 'cloud-rain', 55: 'cloud-rain',
+                    61: 'cloud-rain', 63: 'cloud-rain', 65: 'cloud-rain',
+                    80: 'cloud-rain', 81: 'cloud-rain', 95: 'cloud-lightning'
+                };
+                
+                const iconName = weatherIcons[c.weather_code] || 'cloud-sun';
+                DOM.weatherIcon.innerHTML = `<i class="ph-bold ph-${iconName}"></i>`;
+                DOM.weatherDesc.textContent = c.weather_code <= 1 ? 'Parfait pour une balade!' : c.weather_code <= 3 ? 'Temps nuageux' : 'Temps variable';
+                
+                // Afficher prévisions
+                if (data.hourly) {
+                    const forecastDiv = document.getElementById('weatherForecast');
+                    const contentDiv = document.getElementById('forecastContent');
+                    forecastDiv.style.display = 'block';
+                    let html = '';
+                    for (let i = 0; i < Math.min(4, data.hourly.time.length); i++) {
+                        const time = new Date(data.hourly.time[i]);
+                        const hour = time.getHours() + 'h';
+                        const temp = Math.round(data.hourly.temperature_2m[i]);
+                        html += `<div style="text-align:center;background:rgba(255,255,255,0.1);padding:6px 10px;border-radius:8px;"><div style="font-weight:700;">${hour}</div><div><i class="ph ph-${weatherIcons[data.hourly.weather_code[i]] || 'cloud-sun'}"></i> ${temp}°</div></div>`;
+                    }
+                    contentDiv.innerHTML = html;
+                }
+            } catch (e) { 
+                console.log('Météo non disponible (normal en localhost)');
+                // Garder l'interface propre même sans météo
+                DOM.weatherTemp.textContent = '--°';
+                DOM.weatherDesc.textContent = 'Météo non disponible';
+            }
+        }
+
+        async function queryOverpass(query, timeout = 60000) {
+            for (const server of OVERPASS_SERVERS) {
+                try {
+                    const controller = new AbortController();
+                    const tid = setTimeout(() => controller.abort(), timeout);
+                    const res = await fetch(server, { method: 'POST', body: 'data=' + encodeURIComponent(query), signal: controller.signal });
+                    clearTimeout(tid);
+                    if (!res.ok) continue;
+                    return JSON.parse(await res.text());
+                } catch (e) { continue; }
+            }
+            throw new Error('Serveurs indisponibles');
+        }
+
+        
+        // Recherche progressive : commence près, puis élargit
+        async function progressiveSearch(userLocation, maxRadius, durationMin, durationMax, typeFilter) {
+            const steps = [
+                { radius: 5, label: 'Dans un rayon de 5 km...' },
+                { radius: 10, label: 'Élargissement à 10 km...' },
+                { radius: 15, label: 'Élargissement à 15 km...' },
+                { radius: Math.min(maxRadius, 20), label: `Élargissement à ${Math.min(maxRadius, 20)} km...` },
+                { radius: maxRadius, label: `Recherche complète (${maxRadius} km)...` }
+            ];
+            
+            let allRoutes = [];
+            let previousCount = 0;
+            
+            for (const step of steps) {
+                if (step.radius > maxRadius) continue;
+                
+                updateLoadingText(step.label);
+                
+                const routes = await fetchHikingRoutes(userLocation, step.radius);
+                
+                // Ne garder que les nouvelles routes (pas déjà trouvées)
+                const newRoutes = routes.filter(r => !allRoutes.some(ar => ar.id === r.id));
+                allRoutes = [...allRoutes, ...newRoutes];
+                
+                DOM.statRoutes.textContent = allRoutes.length;
+                
+                // Si on trouve au moins 20 nouveaux résultats, on peut s'arrêter
+                if (allRoutes.length >= 20 && allRoutes.length > previousCount + 5) {
+                    console.log(`Recherche arrêtée à ${step.radius}km avec ${allRoutes.length} circuits`);
+                    break;
+                }
+                
+                previousCount = allRoutes.length;
+                
+                // Arrêt si on a atteint le rayon max
+                if (step.radius >= maxRadius) break;
+            }
+            
+            return allRoutes;
+        }
+
+        
+        // 🔄 Recherche progressive par étapes de distance
+        async function searchWalksProgressive() {
+            if (!userLocation) {
+                console.log('❌ Pas de localisation, recherche annulée');
+                return;
+            }
+            
+            console.log('🚀 Début recherche progressive');
+            
+            // 🧹 EFFACER LES ANCIENS RÉSULTATS
+            walks = [];
+            allWalks = [];
+            DOM.results.innerHTML = '';
+            routesLayer.clearLayers();
+            allRoutesLayer.clearLayers();
+            console.log('🗑️  Anciens résultats effacés');
+            
+            const indicator = document.getElementById('searchingIndicator');
+            if (indicator) indicator.style.display = 'block';
+            
+            const durationMin = parseInt(DOM.durationMin.value);
+            const durationMax = parseInt(DOM.durationMax.value);
+            const typeFilter = document.querySelector('input[name="routeType"]:checked')?.value || 'all';
+
+            // Récupérer les filtres avancés
+            const advancedFilters = {
+                environment: Array.from(document.querySelectorAll('input[name="environment"]:checked')).map(el => el.value),
+                difficulty: Array.from(document.querySelectorAll('input[name="difficulty"]:checked')).map(el => el.value),
+                waterPoints: document.getElementById('filterWaterPoints')?.checked || false,
+                shaded: document.getElementById('filterShaded')?.checked || false,
+                crowding: document.querySelector('input[name="crowding"]:checked')?.value || 'moderate',
+                sunlight: document.querySelector('input[name="sunlight"]:checked')?.value || 'mixed'
+            };
+            
+            // Étapes de recherche progressive
+            const steps = [
+                { radius: 5, label: '🔍 Recherche à 5 km...' },
+                { radius: 10, label: '🔍 Recherche à 10 km...' },
+                { radius: 15, label: '🔍 Recherche à 15 km...' }
+            ];
+            
+            let allRoutes = [];
+            let displayedCount = 0;
+            
+            try {
+                for (const step of steps) {
+                    console.log(`📍 Étape ${step.radius}km`);
+                    updateLoadingText(step.label);
+                    
+                    // Rechercher à ce rayon
+                    const routes = await fetchHikingRoutes(userLocation, step.radius);
+                    console.log(`  → ${routes.length} circuits trouvés`);
+                    
+                    if (routes.length === 0) {
+                        console.log('  ⚠️  Aucun circuit à ce rayon, passage au suivant');
+                    }
+                    
+                    // Fusionner avec les résultats précédents (dédupliquer)
+                    const newRoutes = routes.filter(r => !allRoutes.some(ar => ar.id === r.id));
+                    allRoutes = [...allRoutes, ...newRoutes];
+                    console.log(`  → ${newRoutes.length} nouveaux circuits`);
+                    
+                    // Filtrer et afficher
+                    console.log('  🔍 Filtrage avec:', advancedFilters);
+                    const filtered = filterAndCombine(allRoutes, durationMin, durationMax, typeFilter, advancedFilters);
+                    console.log(`  ✅ ${filtered.length} circuits après filtrage`);
+                    
+                    if (filtered.length > displayedCount) {
+                        console.log(`  → ${filtered.length - displayedCount} nouveaux affichés`);
+                        displayedCount = filtered.length;
+                        walks = filtered;
+                        displayResults(filtered);
+                        buildAllRoutesLayer(walks);
+                        
+                        // Pas de zoom automatique - carte reste tranquille
+                    }
+                    
+                    // Si on a assez de résultats, on peut arrêter
+                    if (filtered.length >= 20) {
+                        console.log('✅ Assez de résultats, arrêt recherche progressive');
+                        break;
+                    }
+                }
+                
+                console.log(`✅ Recherche terminée : ${allRoutes.length} circuits au total, ${displayedCount} affichés`);
+                
+                if (DOM.progressInfo) {
+                    DOM.progressInfo.style.display = 'block';
+                    document.getElementById('statRoutes').textContent = allRoutes.length;
+                    document.getElementById('statDisplayed').textContent = displayedCount;
+                }
+                
+                // Message si aucun résultat
+                if (displayedCount === 0) {
+                    const hasRoutes = allRoutes.length > 0;
+                    DOM.results.innerHTML = `
+                        <div class="message-box empty">
+                            <div style="font-size:2.5rem;margin-bottom:12px;">🐕</div>
+                            <p style="font-weight:600;font-size:1.1rem;margin-bottom:12px;">Aucune balade trouvée</p>
+                            <p style="color:var(--text-secondary);line-height:1.6;">
+                                ${hasRoutes 
+                                    ? 'Essayez d\'ajuster vos filtres :<br>• Élargir la durée<br>• Changer environnement ou difficulté<br>• Modifier le rayon de recherche' 
+                                    : 'Aucun circuit dans cette zone.<br>Essayez d\'élargir le rayon de recherche<br>ou de changer de lieu.'}
+                            </p>
+                        </div>
+                    `;
+                }
+                
+            } catch (err) {
+                console.error('❌ Erreur recherche:', err);
+                DOM.results.innerHTML = `<div class="message-box error"><strong>Erreur :</strong> ${err.message}</div>`;
+            }
+            
+            // Cacher l'indicateur
+            if (indicator) indicator.style.display = 'none';
+        }
+
+        async function searchWalks() {
+            if (!userLocation) {
+                console.log('❌ Pas de localisation, recherche annulée');
+                return;
+            }
+            
+            console.log('🔍 RECHERCHE LANCÉE pour:', userLocation.name);
+            
+            // Gérer l'indicateur de recherche
+            const indicator = document.getElementById('searchingIndicator');
+            if (indicator) {
+                console.log('📊 Affichage indicateur recherche');
+                indicator.style.display = 'block';
+            }
+            
+            const radius = parseInt(DOM.radiusRange.value);
+            const durationMin = parseInt(DOM.durationMin.value);
+            const durationMax = parseInt(DOM.durationMax.value);
+            const typeFilter = document.querySelector('input[name="routeType"]:checked')?.value || 'all';
+
+            // Récupérer les filtres avancés
+            const advancedFilters = {
+                environment: Array.from(document.querySelectorAll('input[name="environment"]:checked')).map(el => el.value),
+                difficulty: Array.from(document.querySelectorAll('input[name="difficulty"]:checked')).map(el => el.value),
+                waterPoints: document.getElementById('filterWaterPoints')?.checked || false,
+                shaded: document.getElementById('filterShaded')?.checked || false,
+                crowding: document.querySelector('input[name="crowding"]:checked')?.value || 'moderate',
+                sunlight: document.querySelector('input[name="sunlight"]:checked')?.value || 'mixed'
+            };
+            
+
+            showLoading();
+            DOM.searchBtn.disabled = true;
+            DOM.searchBtn.textContent = 'â³ Recherche...';
+
+            try {
+                DOM.progressInfo.style.display = 'block';
+                const routes = await progressiveSearch(userLocation, radius, durationMin, durationMax, typeFilter);
+
+                const results = filterAndCombine(routes, durationMin, durationMax, typeFilter, advancedFilters);
+                walks = results;
+                DOM.statDisplayed.textContent = walks.length;
+                displayResults(results);
+                buildAllRoutesLayer(walks);
+
+                if (walks.length > 0) {
+                    const allCoords = walks.flatMap(w => w.coords);
+                    if (allCoords.length) map.fitBounds(L.latLngBounds(allCoords), { padding: [50, 50] });
+                    // Sélectionner la premiÃ¨re balade aprÃ¨s un court délai pour laisser le canvas se dimensionner
+                    setTimeout(() => showOnMap(0), 500);
+                }
+            } catch (err) {
+                console.error(err);
+                DOM.results.innerHTML = `<div class="message-box error"><strong>Erreur :</strong> ${err.message}</div>`;
+            }
+            // Recherche terminée
+            
+            // Cacher l'indicateur
+            if (indicator) indicator.style.display = 'none';
+        }
+
+        function showLoading() {
+            DOM.results.innerHTML = `<div class="loading-container"><div class="spinner"></div><div class="loading-text">Recherche en cours...</div><div class="loading-sub" id="loadingText">Interrogation OpenStreetMap</div></div>`;
+            routesLayer.clearLayers(); allRoutesLayer.clearLayers();
+        }
+
+        function updateLoadingText(t) { 
+            const el = document.getElementById('loadingText'); 
+            if (el) {
+                el.textContent = t;
+                // Ajouter une animation pour montrer l'activité
+                el.style.opacity = '0.7';
+                setTimeout(() => { if (el) el.style.opacity = '1'; }, 200);
+            }
+        }
+
+        async function fetchHikingRoutes(loc, radiusKm) {
+            const query = `[out:json][timeout:45];(relation["route"="hiking"](around:${radiusKm*1000},${loc.lat},${loc.lng});relation["route"="foot"](around:${radiusKm*1000},${loc.lat},${loc.lng});relation["route"="walking"](around:${radiusKm*1000},${loc.lat},${loc.lng}););out body;>;out skel qt;`;
+            const data = await queryOverpass(query, 50000);
+            return parseHikingRoutes(data, loc);
+        }
+
+
+        function parseHikingRoutes(data, loc) {
+            const nodes = new Map(), ways = new Map(), routes = [];
+            data.elements.forEach(el => { if (el.type === 'node') nodes.set(el.id, {lat:el.lat,lng:el.lon}); });
+            data.elements.forEach(el => { if (el.type === 'way' && el.nodes) { const c = el.nodes.map(n => nodes.get(n)).filter(Boolean); if (c.length > 1) ways.set(el.id, c); } });
+            data.elements.forEach(el => { if (el.type === 'relation' && el.tags) { const r = parseRelation(el, ways, loc); if (r) routes.push(r); } });
+            return routes;
+        }
+
+        function parseRelation(rel, ways, loc) {
+            const tags = rel.tags || {}, wayIds = (rel.members||[]).filter(m => m.type==='way').map(m => m.ref);
+            if (!wayIds.length) return null;
+            let allCoords = [], usedWays = new Set();
+            const first = ways.get(wayIds[0]); if (!first) return null;
+            allCoords = [...first]; usedWays.add(wayIds[0]);
+            let changed = true;
+            while (changed && usedWays.size < wayIds.length) {
+                changed = false;
+                for (const wid of wayIds) {
+                    if (usedWays.has(wid)) continue;
+                    const wc = ways.get(wid); if (!wc) continue;
+                    const f = allCoords[0], l = allCoords[allCoords.length-1], wf = wc[0], wl = wc[wc.length-1];
+                    const d = [haversine(l.lat,l.lng,wf.lat,wf.lng), haversine(l.lat,l.lng,wl.lat,wl.lng), haversine(f.lat,f.lng,wf.lat,wf.lng), haversine(f.lat,f.lng,wl.lat,wl.lng)];
+                    const min = Math.min(...d), idx = d.indexOf(min);
+                    if (min < 0.1) { if (idx===0) allCoords.push(...wc); else if (idx===1) allCoords.push(...[...wc].reverse()); else if (idx===2) allCoords = [...[...wc].reverse(),...allCoords]; else allCoords = [...wc,...allCoords]; usedWays.add(wid); changed = true; }
+                }
+            }
+            if (allCoords.length < 2) return null;
+            let dist = 0; for (let i = 0; i < allCoords.length-1; i++) dist += haversine(allCoords[i].lat,allCoords[i].lng,allCoords[i+1].lat,allCoords[i+1].lng);
+            const fst = allCoords[0], lst = allCoords[allCoords.length-1];
+            const isLoop = haversine(fst.lat,fst.lng,lst.lat,lst.lng) < 0.3;
+            const distToStart = haversine(loc.lat,loc.lng,fst.lat,fst.lng);
+            const name = tags.name || tags.ref || `Circuit ${rel.id}`;
+            const ref = tags.ref || '';
+            const isOfficial = ref.startsWith('GR') || ref.startsWith('PR') || ['lwn','rwn','nwn'].includes(tags.network) || !!tags.osmc_symbol;
+            return { id: rel.id, name, ref, distance: dist, isLoop, isOfficial, distToStart, coords: allCoords.map(c => [c.lat,c.lng]), rawCoords: allCoords, tags };
+        }
+
+
+
+
+
+
+
+        
+
+        
+        // Fonctions de calcul de scores pour les filtres avancés
+        
+        function calculateEnvironmentScore(route) {
+            // Score de 0 (nature) à 1 (urbain)
+            // Basé sur la distance au point de départ et les tags
+            let score = 0.5; // Neutre par défaut
+            
+            // Si le circuit est loin du point de départ, plus de chance d'être nature
+            if (route.distToStart > 5) score -= 0.2;
+            if (route.distToStart > 10) score -= 0.2;
+            
+            // Les GR/PR sont souvent en nature
+            if (route.isOfficial) score -= 0.3;
+            
+            return Math.max(0, Math.min(1, score));
+        }
+        
+        function calculateDifficultyScore(route) {
+            // Score de 0 (facile) à 1 (difficile)
+            // Basé sur la distance et le dénivelé (quand disponible)
+            let score = 0.5;
+            
+            // Distance
+            if (route.effectiveDistance < 3) score -= 0.2;
+            else if (route.effectiveDistance > 8) score += 0.2;
+            else if (route.effectiveDistance > 12) score += 0.3;
+            
+            // Les boucles sont généralement un peu plus difficiles que A/R
+            if (route.isLoop) score += 0.1;
+            
+            return Math.max(0, Math.min(1, score));
+        }
+        
+        function calculateCrowdingScore(route) {
+            // Score de 0 (calme) à 1 (fréquenté)
+            let score = 0.5;
+            
+            // Les circuits officiels sont plus fréquentés
+            if (route.isOfficial) score += 0.3;
+            
+            // Les circuits proches sont plus fréquentés
+            if (route.distToStart < 2) score += 0.2;
+            else if (route.distToStart > 8) score -= 0.3;
+            
+            return Math.max(0, Math.min(1, score));
+        }
+        
+        function calculateSunlightScore(route) {
+            // Score de 0 (ombragé/forêt) à 1 (ensoleillé/découvert)
+            let score = 0.5;
+            
+            // Les circuits officiels en nature ont souvent plus d'ombre
+            if (route.isOfficial) score -= 0.2;
+            
+            // Les circuits urbains/proches sont plus découverts
+            if (route.distToStart < 3) score += 0.2;
+            
+            return Math.max(0, Math.min(1, score));
+        }
+
+        function filterAndCombine(routes, durationMin, durationMax, typeFilter, advancedFilters = {}) {
+            // Convertir les durées en distances (km)
+            const minDist = (durationMin/60)*WALKING_SPEED;
+            const maxDist = (durationMax/60)*WALKING_SPEED;
+            let all = routes.map(r => ({ ...r, effectiveDistance: r.isLoop ? r.distance : r.distance*2, effectiveDuration: ((r.isLoop ? r.distance : r.distance*2)/WALKING_SPEED)*60, isReturn: !r.isLoop }));
+            all = all.filter(r => r.effectiveDistance >= minDist && r.effectiveDistance <= maxDist);
+            // Filtrer les balades cachées
+            all = all.filter(r => !hiddenWalks.includes(r.id));
+            if (typeFilter === 'loop') all = all.filter(r => r.isLoop);
+            else if (typeFilter === 'return') all = all.filter(r => r.isReturn);
+            
+            // Appliquer les filtres avancés
+            if (advancedFilters) {
+                // 1. Environnement (multi-sélection)
+                // Appliquer SEULEMENT si 1 ou 2 options sélectionnées (filtre partiel)
+                if (advancedFilters.environment && advancedFilters.environment.length > 0 && advancedFilters.environment.length < 3) {
+                    console.log('  🎯 Filtre environnement actif:', advancedFilters.environment);
+                    all = all.map(r => ({
+                        ...r,
+                        environmentScore: calculateEnvironmentScore(r)
+                    }));
+                    
+                    // Filtrer selon les types sélectionnés
+                    all = all.filter(r => {
+                        if (advancedFilters.environment.includes('urban') && r.environmentScore > 0.6) return true;
+                        if (advancedFilters.environment.includes('nature') && r.environmentScore < 0.4) return true;
+                        if (advancedFilters.environment.includes('mixed') && r.environmentScore >= 0.4 && r.environmentScore <= 0.6) return true;
+                        return false;
+                    });
+                    console.log('  📊 Après filtre environnement:', all.length, 'circuits');
+                } else {
+                    console.log('  ⏭️  Filtre environnement ignoré (0 ou 3 cochés)');
+                }
+                
+                // 2. Difficulté (multi-sélection)
+                // Appliquer SEULEMENT si 1 ou 2 options sélectionnées (filtre partiel)
+                if (advancedFilters.difficulty && advancedFilters.difficulty.length > 0 && advancedFilters.difficulty.length < 3) {
+                    console.log('  🎯 Filtre difficulté actif:', advancedFilters.difficulty);
+                    all = all.map(r => ({
+                        ...r,
+                        difficultyScore: calculateDifficultyScore(r)
+                    }));
+                    
+                    // Filtrer selon les niveaux sélectionnés
+                    all = all.filter(r => {
+                        if (advancedFilters.difficulty.includes('easy') && r.difficultyScore < 0.3) return true;
+                        if (advancedFilters.difficulty.includes('moderate') && r.difficultyScore >= 0.3 && r.difficultyScore <= 0.7) return true;
+                        if (advancedFilters.difficulty.includes('hard') && r.difficultyScore > 0.7) return true;
+                        return false;
+                    });
+                    console.log('  📊 Après filtre difficulté:', all.length, 'circuits');
+                } else {
+                    console.log('  ⏭️  Filtre difficulté ignoré (0 ou 3 cochés)');
+                }
+                
+                // 3. Points d'eau (pour l'instant, favorise les parcours près de l'eau)
+                if (advancedFilters.waterPoints) {
+                    // Note: implémentation simplifiée - on pourrait analyser les tags OSM
+                    // Pour l'instant, on garde tous les résultats
+                }
+                
+                // 4. Zones ombragées (favorise les parcours en forêt)
+                if (advancedFilters.shaded) {
+                    // Note: implémentation simplifiée
+                }
+                
+                // 5. Affluence
+                if (advancedFilters.crowding !== 'moderate') {
+                    all = all.map(r => ({
+                        ...r,
+                        crowdingScore: calculateCrowdingScore(r)
+                    }));
+                    
+                    if (advancedFilters.crowding === 'quiet') {
+                        all = all.filter(r => r.crowdingScore < 0.4);
+                    } else if (advancedFilters.crowding === 'busy') {
+                        all = all.filter(r => r.crowdingScore > 0.6);
+                    }
+                }
+                
+                // 6. Ensoleillement
+                if (advancedFilters.sunlight !== 'mixed') {
+                    all = all.map(r => ({
+                        ...r,
+                        sunlightScore: calculateSunlightScore(r)
+                    }));
+                    
+                    if (advancedFilters.sunlight === 'sunny') {
+                        all = all.filter(r => r.sunlightScore > 0.6); // Découvert
+                    } else if (advancedFilters.sunlight === 'shaded') {
+                        all = all.filter(r => r.sunlightScore < 0.4); // Couvert
+                    }
+                }
+            }
+            
+            const unique = []; for (const w of all) { if (!unique.some(u => Math.abs(u.effectiveDistance - w.effectiveDistance) < 0.2 && u.name === w.name)) unique.push(w); }
+            // Calculer le milieu de l'intervalle comme cible préférée
+            const targetDuration = (durationMin + durationMax) / 2;
+            unique.sort((a,b) => Math.abs(a.effectiveDuration-targetDuration) - Math.abs(b.effectiveDuration-targetDuration));
+            allWalks = unique; // Stocker tous les résultats
+            currentPage = 0;
+            return unique;
+        }
+
+        function getPagedResults() {
+            const start = 0;
+            const end = (currentPage + 1) * PAGE_SIZE;
+            return allWalks.slice(start, end);
+        }
+
+        function displayResults(results) {
+            walks = getPagedResults();
+            const c = DOM.results;
+            if (!allWalks.length) { c.innerHTML = `<div class="message-box empty"><div style="font-size:2.5rem;margin-bottom:12px;">🐾</div><p style="font-weight:600;">Aucun circuit trouvé</p><p style="margin-top:8px;">Essayez d'élargir le rayon ou d'ajuster la durée</p></div>`; return; }
+            
+            const normal = walks;
+            
+            let html = `<div class="results-header"><h2 class="results-title">🐾• Circuits trouvés</h2><span class="results-count">${allWalks.length}</span></div>`;
+            
+            if (hiddenWalks.length) {
+                html += `<div class="hidden-walks-info"><span>${hiddenWalks.length} balade(s) masquée(s)</span><button onclick="clearHiddenWalks()">Réafficher</button></div>`;
+            }
+            
+            html += `<div class="results-grid">`;
+            normal.forEach((w,i) => html += renderCard(w, i));
+            html += '</div>';
+            
+            // Bouton charger plus
+            if (walks.length < allWalks.length) {
+                html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore()">Charger plus (${allWalks.length - walks.length} restants)</button></div>`;
+            }
+            
+            c.innerHTML = html;
+        }
+
+        function loadMore() {
+            currentPage++;
+            walks = getPagedResults();
+            displayResults();
+            buildAllRoutesLayer(walks);
+        }
+
+        function hideWalk(id) {
+            hiddenWalks.push(id);
+            saveStoredData();
+            allWalks = allWalks.filter(w => w.id !== id);
+            displayResults();
+            buildAllRoutesLayer(getPagedResults());
+        }
+
+        function clearHiddenWalks() {
+            hiddenWalks = [];
+            saveStoredData();
+            DOM.searchBtn.click();
+        }
+
+        function renderCard(w, idx) {
+            const dur = formatDuration(Math.round(w.effectiveDuration)), dist = w.effectiveDistance.toFixed(1);
+            const isFav = favorites.some(f => f.id === w.id);
+            let cls = 'walk-card';
+            let meta = []; if (w.ref && w.ref !== w.name) meta.push(` ${w.ref}`); if (w.distToStart > 0.5) meta.push(` ${w.distToStart.toFixed(1)}km`);
+            let desc = ''; if (w.isShortcut) desc = `Via ${w.shortcutName} â€¢ -${w.savedDistance.toFixed(1)}km`; else if (w.isExtension) desc = `+ ${w.extensionName} â€¢ +${w.addedDistance.toFixed(1)}km`; else if (!w.isLoop) desc = 'Aller-retour';
+            return `<div class="${cls}" data-index="${idx}" id="walk-card-${idx}" onclick="scrollToMapAndShow(${idx})" style="cursor:pointer;"><div class="walk-card-header"><div class="walk-num">${idx+1}</div><div class="walk-badges">${w.isLoop?'<span class="badge badge-loop">Boucle</span>':'<span class="badge badge-return">A/R</span>'}</div></div><div class="walk-card-body"><div class="walk-name">${w.name}</div><div class="walk-stats"><span class="walk-stat"> <strong>${dur}</strong></span><span class="walk-stat"> <strong>${dist} km</strong></span></div>${meta.length?`<div class="walk-meta">${meta.map(m=>`<span class="meta-item">${m}</span>`).join('')}</div>`:''}${desc?`<div class="walk-desc">${desc}</div>`:''}</div><div class="walk-card-actions"><button class="btn-action btn-gpx" onclick="event.stopPropagation();downloadGPX(${idx})">GPX</button><button class="btn-action btn-fav ${isFav?'active':''}" onclick="event.stopPropagation();toggleFavorite(${idx})">${isFav?'­⭐':'☆'}</button><button class="btn-action btn-hide" onclick="event.stopPropagation();hideWalk('${w.id}')" title="Masquer">🚫</button></div></div>`;
+        }
+
+        function buildAllRoutesLayer(results) {
+            allRoutesLayer.clearLayers();
+            results.forEach((w,i) => {
+                let color = w.isVariant ? ROUTE_COLORS.variant : ROUTE_COLORS.normal;
+                const line = L.polyline(w.coords, { color: color, weight: 3, opacity: 0.5 }).addTo(allRoutesLayer);
+                line.on('mouseover', function() { 
+                    this.setStyle({ weight: 6, opacity: 0.95 }); 
+                    const tooltipContent = `<div class="walk-tooltip">
+                        <div class="tooltip-title">${w.name}</div>
+                        <div class="tooltip-stats">
+                            <span>⏱️ <strong>${formatDuration(Math.round(w.effectiveDuration))}</strong></span>
+                            <span>📏 <strong>${w.effectiveDistance.toFixed(1)} km</strong></span>
+                        </div>
+                    </div>`;
+                    this.bindTooltip(tooltipContent, { permanent: false, className: '', offset: [0, -10] }).openTooltip(); 
+                });
+                line.on('mouseout', function() { this.setStyle({ weight: 3, opacity: 0.5 }); this.closeTooltip(); });
+                line.on('click', () => scrollToMapAndShow(i));
+            });
+        }
+
+        function scrollToMapAndShow(idx) { 
+            document.querySelector('.map-container').scrollIntoView({ behavior: 'smooth', block: 'start' }); 
+            setTimeout(() => showOnMap(idx), 300); 
+        }
+
+        function showOnMap(idx) {
+            const w = walks[idx]; if (!w?.coords?.length) return;
+            
+            // Scroll vers la carte
+            document.querySelector('.map-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            document.querySelectorAll('.walk-card').forEach(c => c.classList.remove('active'));
+            const card = document.querySelector(`.walk-card[data-index="${idx}"]`); if (card) card.classList.add('active');
+            routesLayer.clearLayers();
+            
+            // Circuit sélectionné : outline blanche épaisse + couleur ambre
+            let color = w.isShortcut ? ROUTE_COLORS.shortcut : w.isExtension ? ROUTE_COLORS.extension : ROUTE_COLORS.selected;
+            L.polyline(w.coords, { color: 'white', weight: 10, opacity: 0.9 }).addTo(routesLayer);
+            L.polyline(w.coords, { color: color, weight: 5, opacity: 1 }).addTo(routesLayer);
+            
+            if ((w.isShortcut || w.isExtension) && w.originalCoords) L.polyline(w.originalCoords, { color: '#666', weight: 3, opacity: 0.4, dashArray: '8,12' }).addTo(routesLayer);
+            if (w.variantCoords?.length) { L.polyline(w.variantCoords, { color: 'white', weight: 12, opacity: 0.9 }).addTo(routesLayer); L.polyline(w.variantCoords, { color: ROUTE_COLORS.variant, weight: 6, opacity: 1 }).addTo(routesLayer); }
+            
+            L.marker(w.coords[0], { icon: L.divIcon({ html: '<div style="background:#2D5A3D;color:white;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.4);">D</div>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(routesLayer);
+            if (w.isReturn) L.marker(w.coords[w.coords.length-1], { icon: L.divIcon({ html: '<div style="background:#F59E0B;color:white;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.4);">â†©</div>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(routesLayer);
+            
+            map.fitBounds(L.latLngBounds(w.coords), { padding: [60, 60] });
+            fetchElevation(w.coords);
+            updateSelectedWalkCard(w, idx);
+        }
+
+        async function fetchElevation(coords) {
+            const container = document.getElementById('elevationContainer');
+            const step = Math.max(1, Math.floor(coords.length/100));
+            const sampled = coords.filter((_,i) => i%step===0);
+            try {
+                const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${sampled.map(c => `${c[0]},${c[1]}`).join('|')}`);
+                const data = await res.json();
+                if (data.results) { displayElevation(data.results.map(r => r.elevation)); container.style.display = 'block'; }
+            } catch (e) { container.style.display = 'none'; }
+        }
+
+        function displayElevation(elev) {
+            if (!elev || elev.length < 2) return;
+            
+            const canvas = document.getElementById('elevationChart'), ctx = canvas.getContext('2d');
+            let up=0, down=0; for (let i=1; i<elev.length; i++) { const d = elev[i]-elev[i-1]; if (d>0) up+=d; else down+=Math.abs(d); }
+            const min = Math.min(...elev), max = Math.max(...elev);
+            const range = max - min || 1; // Ã‰viter division par zéro
+            
+            // Mettre Ã  jour les stats dans la card sélectionnée
+            document.getElementById('selectedElevUp').textContent = `${Math.round(up)}m`;
+            document.getElementById('selectedElevDown').textContent = `${Math.round(down)}m`;
+            
+            // Attendre que le canvas soit visible et dimensionné
+            requestAnimationFrame(() => {
+                const rect = canvas.getBoundingClientRect();
+                if (rect.width === 0) return;
+                
+                const w = canvas.width = rect.width * 2, h = canvas.height = rect.height * 2;
+                ctx.scale(2,2); 
+                const cw = rect.width, ch = rect.height, pad = 5;
+                ctx.clearRect(0,0,cw,ch);
+                
+                const grad = ctx.createLinearGradient(0,0,0,ch); 
+                grad.addColorStop(0, 'rgba(229,149,0,0.5)'); 
+                grad.addColorStop(1, 'rgba(229,149,0,0.1)');
+                
+                ctx.beginPath(); 
+                ctx.moveTo(pad, ch-pad);
+                elev.forEach((e,i) => { 
+                    const x = pad + (i/(elev.length-1))*(cw-2*pad); 
+                    const y = ch - pad - ((e-min)/range)*(ch-2*pad); 
+                    ctx.lineTo(x,y); 
+                });
+                ctx.lineTo(cw-pad, ch-pad); 
+                ctx.closePath(); 
+                ctx.fillStyle = grad; 
+                ctx.fill();
+                
+                ctx.beginPath(); 
+                elev.forEach((e,i) => { 
+                    const x = pad + (i/(elev.length-1))*(cw-2*pad); 
+                    const y = ch - pad - ((e-min)/range)*(ch-2*pad); 
+                    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); 
+                });
+                ctx.strokeStyle = '#E59500'; 
+                ctx.lineWidth = 2.5; 
+                ctx.stroke();
+            });
+        }
+
+        let currentSelectedIdx = null;
+        
+        function updateSelectedWalkCard(w, idx) {
+            currentSelectedIdx = idx;
+            const card = document.getElementById('selectedWalkCard');
+            card.style.display = 'block';
+            
+            document.getElementById('selectedWalkTitle').textContent = w.name;
+            document.getElementById('selectedDuration').textContent = formatDuration(Math.round(w.effectiveDuration));
+            document.getElementById('selectedDistance').textContent = w.effectiveDistance.toFixed(1) + ' km';
+            
+            // Badges
+            let badgesHtml = '';
+            if (w.isShortcut) badgesHtml += '<span class="badge badge-shortcut">Raccourci</span>';
+            if (w.isExtension) badgesHtml += '<span class="badge badge-extension">Extension</span>';
+            badgesHtml += w.isLoop ? '<span class="badge badge-loop">Boucle</span>' : '<span class="badge badge-return">A/R</span>';
+            if (w.isOfficial) badgesHtml += '<span class="badge badge-official">Officiel</span>';
+            document.getElementById('selectedWalkBadges').innerHTML = badgesHtml;
+            
+            // Détails enrichis
+            let details = '';
+            if (w.distToStart > 0.1) {
+                details += `<div class="detail-row"><span class="detail-label"> Départ à </span><span class="detail-value">${w.distToStart.toFixed(1)} km de votre position</span></div>`;
+            } else {
+                details += `<div class="detail-row"><span class="detail-label">Départ</span><span class="detail-value">Sur place</span></div>`;
+            }
+            if (w.ref && w.ref !== w.name) {
+                details += `<div class="detail-row"><span class="detail-label"> Référence</span><span class="detail-value">${w.ref}</span></div>`;
+            }
+            if (w.isShortcut) {
+                details += `<div class="detail-row"><span class="detail-label"> Raccourci</span><span class="detail-value">Via ${w.shortcutName} économie de ${w.savedDistance.toFixed(1)} km</span></div>`;
+            }
+            if (w.isExtension) {
+                details += `<div class="detail-row"><span class="detail-label"> Extension</span><span class="detail-value">Via ${w.extensionName} Ajout de ${w.addedDistance.toFixed(1)} km</span></div>`;
+            }
+            if (!w.isLoop) {
+                details += `<div class="detail-row"><span class="detail-label"> Type</span><span class="detail-value">Aller-retour (distance réelle ${(w.effectiveDistance/2).toFixed(1)} km )</span></div>`;
+            }
+            // Vitesse moyenne
+            const speed = w.effectiveDistance / (w.effectiveDuration / 60);
+            details += `<div class="detail-row"><span class="detail-label"> Vitesse</span><span class="detail-value">${speed.toFixed(1)} km/h (estimée)</span></div>`;
+            
+            document.getElementById('selectedWalkDetails').innerHTML = details;
+            
+            // Ã‰tat du bouton favoris
+            const isFav = favorites.some(f => f.id === w.id);
+            const favBtn = document.getElementById('selectedFavBtn');
+            favBtn.textContent = isFav ? '⭐­ Sauvegardée' : '☆ Sauvegarder';
+            favBtn.classList.toggle('active', isFav);
+            
+            // Event listeners
+            document.getElementById('selectedGpxBtn').onclick = () => downloadGPX(idx);
+            document.getElementById('selectedFavBtn').onclick = () => {
+                toggleFavorite(idx);
+                const nowFav = favorites.some(f => f.id === w.id);
+                favBtn.textContent = nowFav ? '⭐­ Sauvegardée' : '☆ Sauvegarder';
+                favBtn.classList.toggle('active', nowFav);
+            };
+        }
+
+        function toggleFavorite(idx) {
+            const w = walks[idx], i = favorites.findIndex(f => f.id===w.id);
+            const location = userLocation?.name || 'Inconnu';
+            if (i >= 0) favorites.splice(i,1); 
+            else favorites.push({ id:w.id, name:w.name, distance:w.effectiveDistance, duration:w.effectiveDuration, coords:w.coords, isLoop:w.isLoop, location: location });
+            saveStoredData(); renderFavorites();
+            const btn = document.querySelector(`.walk-card[data-index="${idx}"] .btn-fav`);
+            if (btn) { const isFav = favorites.some(f => f.id===w.id); btn.classList.toggle('active',isFav); btn.textContent = isFav?'⭐­':'☆'; }
+        }
+
+        function renderFavorites() {
+            const list = DOM.favoritesList;
+            if (!favorites.length) { list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="ph ph-paw-print"></i></div><p>Aucune balade sauvegardée</p></div>`; return; }
+            
+            // Grouper par lieu
+            const grouped = {};
+            favorites.forEach((f, i) => {
+                const loc = f.location || 'Autre';
+                if (!grouped[loc]) grouped[loc] = [];
+                grouped[loc].push({ ...f, originalIndex: i });
+            });
+            
+            let html = '';
+            Object.keys(grouped).forEach(loc => {
+                html += `<div class="favorites-group"><div class="favorites-group-title"> ${loc}</div>`;
+                grouped[loc].forEach(f => {
+                    html += `<div class="favorite-item" onclick="showFavoriteOnMap(${f.originalIndex})"><div class="favorite-info"><div class="favorite-name">${f.name}</div><div class="favorite-meta"><i class="ph ph-path"></i> ${f.distance.toFixed(1)} km <i class="ph ph-timer"></i>  ${formatDuration(Math.round(f.duration))}</div></div><button class="favorite-remove" onclick="event.stopPropagation();removeFavorite(${f.originalIndex})"></button></div>`;
+                });
+                html += '</div>';
+            });
+            list.innerHTML = html;
+        }
+
+        function showFavoriteOnMap(i) {
+            const f = favorites[i]; if (!f?.coords) return;
+            document.querySelector('.map-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => { routesLayer.clearLayers(); L.polyline(f.coords, { color: 'white', weight: 10, opacity: 0.9 }).addTo(routesLayer); L.polyline(f.coords, { color: ROUTE_COLORS.normal, weight: 5, opacity: 1 }).addTo(routesLayer); L.marker(f.coords[0], { icon: L.divIcon({ html: '<div style="background:#2D5A3D;color:white;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;border:3px solid white;">D</div>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(routesLayer); map.fitBounds(L.latLngBounds(f.coords), { padding: [60, 60] }); }, 300);
+        }
+
+        function removeFavorite(i) { favorites.splice(i,1); saveStoredData(); renderFavorites(); }
+
+        function downloadGPX(idx) {
+            const w = walks[idx]; if (!w) return;
+            let coords = [...w.coords]; if (w.isReturn) coords = [...coords, ...[...w.coords].reverse().slice(1)];
+            const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="BalaDogo"><trk><name>${w.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</name><trkseg>${coords.map(c=>`<trkpt lat="${c[0]}" lon="${c[1]}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'})); a.download = `${w.name.replace(/[^a-zA-Z0-9]/g,'_')}.gpx`; a.click();
+        }
+
+        function haversine(lat1,lon1,lat2,lon2) { const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180; const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
